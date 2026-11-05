@@ -1,0 +1,5 @@
+/target
+.tmp.driveupload/
+DEVELOPMENT_LOG.md
+assets/sample_output.pdf
+assets/sample_output.html

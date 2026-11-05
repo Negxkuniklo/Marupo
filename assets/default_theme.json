@@ -1,0 +1,102 @@
+{
+  "theme_name": "Standard Clean (標準)",
+  "body_font": "Yu Gothic",
+  "heading_font": "Yu Gothic",
+  "code_font": "Consolas",
+  "base_font_size": 10.5,
+  "line_height": 1.65,
+  "paragraph_spacing": 8.0,
+  "text_color": [31, 41, 55],
+  "page_background": [255, 255, 255],
+  "link_color": [37, 99, 235],
+  "link_underline": true,
+  "metadata_mode": "HeaderCard",
+  "show_toc": false,
+  "toc_title": "目次 / Table of Contents",
+  "max_toc_level": 3,
+  "paper_size": "A4",
+  "landscape": false,
+  "margin_top_mm": 20.0,
+  "margin_bottom_mm": 20.0,
+  "margin_left_mm": 20.0,
+  "margin_right_mm": 20.0,
+  "show_page_numbers": true,
+  "bold_style": {
+    "color": [15, 23, 42],
+    "size_scale": 1.0,
+    "stroke_boost": 0.65,
+    "slant": 0.0,
+    "use_background": false,
+    "background_color": [254, 249, 195],
+    "underline": false
+  },
+  "italic_style": {
+    "color": [51, 65, 85],
+    "size_scale": 1.0,
+    "stroke_boost": 0.0,
+    "slant": 0.2,
+    "use_background": false,
+    "background_color": [241, 245, 249],
+    "underline": false
+  },
+  "highlight_style": {
+    "color": [17, 24, 39],
+    "size_scale": 1.0,
+    "stroke_boost": 0.35,
+    "slant": 0.0,
+    "use_background": true,
+    "background_color": [254, 240, 138],
+    "underline": false
+  },
+  "inline_code_style": {
+    "color": [190, 24, 93],
+    "size_scale": 0.92,
+    "stroke_boost": 0.1,
+    "slant": 0.0,
+    "use_background": true,
+    "background_color": [243, 244, 246],
+    "underline": false
+  },
+  "h1_style": {
+    "color": [15, 23, 42],
+    "size_scale": 2.0,
+    "stroke_boost": 0.8,
+    "underline": true,
+    "underline_color": [59, 130, 246],
+    "left_accent_bar": false
+  },
+  "h2_style": {
+    "color": [30, 41, 59],
+    "size_scale": 1.5,
+    "stroke_boost": 0.7,
+    "underline": true,
+    "underline_color": [203, 213, 225],
+    "left_accent_bar": true
+  },
+  "h3_style": {
+    "color": [51, 65, 85],
+    "size_scale": 1.25,
+    "stroke_boost": 0.6,
+    "underline": false,
+    "underline_color": [226, 232, 240],
+    "left_accent_bar": false
+  },
+  "h4_style": {
+    "color": [71, 85, 105],
+    "size_scale": 1.1,
+    "stroke_boost": 0.5,
+    "underline": false,
+    "underline_color": [226, 232, 240],
+    "left_accent_bar": false
+  },
+  "code_block_bg": [248, 250, 252],
+  "code_block_text": [30, 41, 59],
+  "code_block_border": [226, 232, 240],
+  "quote_bar_color": [100, 116, 139],
+  "quote_bg_color": [248, 250, 252],
+  "quote_text_color": [71, 85, 105],
+  "table_header_bg": [241, 245, 249],
+  "table_header_text": [15, 23, 42],
+  "table_stripe_bg": [249, 250, 251],
+  "table_border_color": [203, 213, 225]
+}
