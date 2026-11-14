@@ -181,11 +181,24 @@ impl Default for ThemeConfig {
 
 impl ThemeConfig {
     pub fn preset_standard() -> Self {
+        #[cfg(target_os = "windows")]
+        let (body_font, heading_font, code_font) = (
+            "Yu Gothic".to_string(),
+            "Yu Gothic".to_string(),
+            "Consolas".to_string(),
+        );
+        #[cfg(not(target_os = "windows"))]
+        let (body_font, heading_font, code_font) = (
+            "Noto Sans CJK JP".to_string(),
+            "Noto Sans CJK JP".to_string(),
+            "DejaVu Sans Mono".to_string(),
+        );
+
         Self {
             theme_name: "Standard Clean (標準)".to_string(),
-            body_font: "Yu Gothic".to_string(),
-            heading_font: "Yu Gothic".to_string(),
-            code_font: "Consolas".to_string(),
+            body_font,
+            heading_font,
+            code_font,
             base_font_size: 10.5,
             line_height: 1.65,
             paragraph_spacing: 8.0,
@@ -295,8 +308,16 @@ impl ThemeConfig {
     pub fn preset_academic() -> Self {
         let mut t = Self::preset_standard();
         t.theme_name = "Academic / 論文・レポート調 (明朝)".to_string();
-        t.body_font = "Yu Mincho".to_string();
-        t.heading_font = "Yu Gothic".to_string();
+        #[cfg(target_os = "windows")]
+        {
+            t.body_font = "Yu Mincho".to_string();
+            t.heading_font = "Yu Gothic".to_string();
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            t.body_font = "Noto Serif CJK JP".to_string();
+            t.heading_font = "Noto Sans CJK JP".to_string();
+        }
         t.base_font_size = 10.5;
         t.line_height = 1.75;
         t.metadata_mode = MetadataDisplayMode::HeaderCard;
@@ -312,8 +333,16 @@ impl ThemeConfig {
     pub fn preset_vivid_emphasis() -> Self {
         let mut t = Self::preset_standard();
         t.theme_name = "Vivid Tech / 強調カスタム重視".to_string();
-        t.body_font = "Meiryo".to_string();
-        t.heading_font = "Meiryo".to_string();
+        #[cfg(target_os = "windows")]
+        {
+            t.body_font = "Meiryo".to_string();
+            t.heading_font = "Meiryo".to_string();
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            t.body_font = "Noto Sans CJK JP".to_string();
+            t.heading_font = "Noto Sans CJK JP".to_string();
+        }
         t.metadata_mode = MetadataDisplayMode::PropertyTable;
         t.bold_style.color = [185, 28, 28]; // Deep crimson bold
         t.bold_style.size_scale = 1.12; // Slightly larger bold!
@@ -333,8 +362,16 @@ impl ThemeConfig {
         t.theme_name = "Warm Editorial / 書籍・Zine風".to_string();
         t.page_background = [253, 251, 247];
         t.text_color = [45, 38, 34];
-        t.body_font = "Yu Mincho".to_string();
-        t.heading_font = "Yu Mincho".to_string();
+        #[cfg(target_os = "windows")]
+        {
+            t.body_font = "Yu Mincho".to_string();
+            t.heading_font = "Yu Mincho".to_string();
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            t.body_font = "Noto Serif CJK JP".to_string();
+            t.heading_font = "Noto Serif CJK JP".to_string();
+        }
         t.bold_style.color = [154, 52, 18];
         t.bold_style.size_scale = 1.05;
         t.highlight_style.background_color = [254, 215, 170];
@@ -369,7 +406,29 @@ impl Default for UserDefaultsConfig {
 
 impl UserDefaultsConfig {
     pub fn config_file_path() -> std::path::PathBuf {
-        std::path::PathBuf::from("user_defaults.json")
+        #[cfg(target_os = "windows")]
+        {
+            std::path::PathBuf::from("user_defaults.json")
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
+                if !xdg.trim().is_empty() {
+                    return std::path::PathBuf::from(xdg)
+                        .join("marupo")
+                        .join("user_defaults.json");
+                }
+            }
+            if let Ok(home) = std::env::var("HOME") {
+                if !home.trim().is_empty() {
+                    return std::path::PathBuf::from(home)
+                        .join(".config")
+                        .join("marupo")
+                        .join("user_defaults.json");
+                }
+            }
+            std::path::PathBuf::from("user_defaults.json")
+        }
     }
 
     pub fn load_or_default() -> Self {
@@ -384,6 +443,11 @@ impl UserDefaultsConfig {
 
     pub fn save(&self) -> Result<(), String> {
         let path = Self::config_file_path();
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+        }
         let json = serde_json::to_string_pretty(self).map_err(|e| e.to_string())?;
         std::fs::write(&path, json).map_err(|e| e.to_string())
     }

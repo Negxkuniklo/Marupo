@@ -1,6 +1,6 @@
 # Marupo（マルポ） — MarkdownをRustでPDFにするアプリ
 
-**Marupo（マルポ）**（`Marupo.exe`）は、「**Ma**rkdownを**Ru**stで**Po**rtable Document Formatにするアプリ」の頭2文字ずつをとった、Windows向けの純Rust製スタンドアロン・デスクトップアプリケーションです。
+**Marupo（マルポ）**（Windows: `Marupo.exe` / Linux: `Marupo`・Flatpak）は、「**Ma**rkdownを**Ru**stで**Po**rtable Document Formatにするアプリ」の頭2文字ずつをとった、純Rust製スタンドアロン・デスクトップアプリケーションです。
 WebViewや外部変換ツール（wkhtmltopdf / LaTeX / Chromium等）に一切依存せず、**100%純粋なRustコードのみ**でMarkdownの解析・組版・リアルタイムプレビュー・PDF/HTML出力までを一貫して行います。
 
 ---
@@ -8,15 +8,16 @@ WebViewや外部変換ツール（wkhtmltopdf / LaTeX / Chromium等）に一切�
 ## 主な特徴
 
 - **完全単体動作（ポータブル設計）**
-  - `Marupo.exe` 1ファイルのみで動作します（インストーラー不要・外部ランタイム不要・オフライン完結・アイコン内蔵）。
+  - Windowsでは `Marupo.exe` 1ファイルのみで動作します（インストーラー不要・外部ランタイム不要・オフライン完結・アイコン内蔵）。
+  - Linuxではネイティブビルド（X11 / Wayland両対応）および **Flatpak** パッケージに対応しています。
 - **プレビューと100%一致する出力**
   - 独自の純Rust組版エンジンにより、画面上の縦スクロール連続シートプレビューと出力されるベクターPDFが1ピクセルのズレもなく一致します。
   - 単一ファイルで完結する **スタンドアロンHTML出力（`🌐 HTML出力`）** にも対応しています。
 - **複数タブ ＆ ドラッグ＆ドロップ対応**
-  - 複数のMarkdownファイル（`.md`, `.markdown`, `.txt`）をウィンドウへドラッグ＆ドロップしてタブで同時に開けます。
+  - 複数のMarkdownファイル（`.md`, `.markdown`, `.txt`）をウィンドウへドラッグ＆ドロップしてタブで同時に開けます（起動時のコマンドライン引数でのファイル指定にも対応）。
   - 開いている全タブを指定フォルダへ一括でPDF出力する **「📚 一括PDF」** 機能も備えています。
 - **システム内フォントの自由な選択**
-  - Windows内にインストールされているフォント（游ゴシック、游明朝、メイリオ、BIZ UDPゴシック/明朝、MSゴシック/明朝、源ノ角ゴシック等）を検索・選択できます。
+  - OS内にインストールされているフォント（Windows: 游ゴシック、游明朝、メイリオ等 / Linux: Noto Sans CJK JP、Noto Serif CJK JP、IPAexゴシック等）を検索・選択できます。
 - **強調・マーカー・見出しの自在なカスタマイズ**
   - 太字（`**Bold**`）、蛍光マーカー（`==Highlight==`）、斜体（`*Italic*`）、インラインコード（`` `code` ``）の **文字色・背景色・文字サイズ倍率（0.75x〜1.80x）・太さ・下線・傾き** をGUIスライダーでリアルタイムに調整できます。
 - **プロ向け JSON / CSS ライブ編集**
@@ -75,12 +76,48 @@ WebViewや外部変換ツール（wkhtmltopdf / LaTeX / Chromium等）に一切�
 
 ## 設定ファイルの保存場所とアンインストール
 
-- 「★ 初期値に保存」で登録したユーザー初期設定は実行フォルダ内の `user_defaults.json`、ウィンドウ状態は `%APPDATA%\Marupo\` に保存されます。
-- アプリケーションをアンインストールする場合は、`Marupo.exe` 本体と設定ファイルを削除するだけで完了します（レジストリ等は一切変更しません）。
+- 「★ 初期値に保存」で登録したユーザー初期設定・ウィンドウ状態の保存先:
+  - **Windows**: 実行フォルダ内の `user_defaults.json`、ウィンドウ状態は `%APPDATA%\Marupo\`
+  - **Linux（ネイティブ）**: `~/.config/marupo/user_defaults.json`、ウィンドウ状態は `~/.local/share/io.github.negxkuniklo.marupo/`
+  - **Linux（Flatpak）**: `~/.var/app/io.github.negxkuniklo.Marupo/config/marupo/user_defaults.json`、ウィンドウ状態は `~/.var/app/io.github.negxkuniklo.Marupo/data/io.github.negxkuniklo.marupo/`
+- アプリケーションをアンインストールする場合:
+  - Windowsでは `Marupo.exe` 本体と設定ファイルを削除するだけで完了します（レジストリ等は一切変更しません）。
+  - Flatpakでは `flatpak uninstall io.github.negxkuniklo.Marupo` で削除できます。
+
+---
+
+## Linux / Flatpak でのビルド・インストール
+
+### 1. Flatpak（推奨・サンドボックス実行）
+
+```bash
+# ビルドして Marupo.flatpak を生成
+./packaging/flatpak/build-flatpak.sh
+
+# ローカルへインストールして起動
+flatpak install --user -y target/Marupo.flatpak
+flatpak run io.github.negxkuniklo.Marupo
+
+# Flatpak経由でCLI変換を実行する場合
+flatpak run io.github.negxkuniklo.Marupo --export input.md output.pdf
+```
+
+> `Cargo.lock` を更新した場合は、`python3 packaging/flatpak/gen-cargo-sources.py` を実行して `packaging/flatpak/cargo-sources.json` を再生成してください。
+
+### 2. Linux ネイティブインストール
+
+```bash
+# ビルドして ~/.local 以下にバイナリ・アイコン・.desktop を配置
+./packaging/linux/install.sh
+```
+
+> 日本語表示のために `fonts-noto-cjk` などの日本語フォントがシステムにインストールされていることを推奨します。
 
 ---
 
 ## 動作環境
 
-- **OS**: Windows 10 / Windows 11 (64-bit)
+- **OS**:
+  - Windows 10 / Windows 11 (64-bit)
+  - Linux (X11 / Wayland, Flatpak `org.freedesktop.Platform//24.08` 対応)
 - **ライセンス**: MIT License（詳細は同梱の `LICENSE.txt` をご参照ください）

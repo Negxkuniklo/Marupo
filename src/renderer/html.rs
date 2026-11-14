@@ -156,7 +156,7 @@ fn generate_preview_matching_css(
       margin: 0;
       padding: 0;
       background-color: {page_bg};
-      font-family: "{body_font}", "Yu Gothic", "Meiryo", sans-serif;
+      font-family: "{body_font}", "Yu Gothic", "Meiryo", "Noto Sans CJK JP", "Noto Sans JP", "Hiragino Sans", sans-serif;
       font-size: {base_size:.2}pt;
       line-height: {line_height:.2};
       color: {text_color};
@@ -197,7 +197,7 @@ fn generate_preview_matching_css(
     mark {{ {highlight_css} }}
     del, s {{ text-decoration: line-through; }}
     code.inline-code {{
-      font-family: "{code_font}", Consolas, monospace;
+      font-family: "{code_font}", Consolas, "Noto Sans Mono", "DejaVu Sans Mono", "Liberation Mono", monospace;
       {code_css}
     }}
     a {{
@@ -311,7 +311,7 @@ fn generate_preview_matching_css(
       background-color: {th_bg};
       border-bottom: 1px solid {code_border};
       padding: 2.5pt 10pt;
-      font-family: "{code_font}", Consolas, monospace;
+      font-family: "{code_font}", Consolas, "Noto Sans Mono", "DejaVu Sans Mono", "Liberation Mono", monospace;
       font-size: 0.78em;
       font-weight: 600;
       color: {quote_text};
@@ -319,7 +319,7 @@ fn generate_preview_matching_css(
     pre.code-block {{
       margin: 0;
       padding: 8pt 10pt;
-      font-family: "{code_font}", Consolas, monospace;
+      font-family: "{code_font}", Consolas, "Noto Sans Mono", "DejaVu Sans Mono", "Liberation Mono", monospace;
       font-size: 0.90em;
       line-height: 1.45;
       color: {code_text};
@@ -423,14 +423,14 @@ fn generate_preview_matching_css(
     }}
     /* 2D Math Layout */
     .math-inline {{
-      font-family: "Cambria Math", "Latin Modern Math", "{body_font}", serif;
+      font-family: "Cambria Math", "Latin Modern Math", "STIX Two Math", "DejaVu Math TeX Gyre", "{body_font}", serif;
       display: inline-flex;
       align-items: center;
       vertical-align: middle;
       margin: 0 1px;
     }}
     .math-display {{
-      font-family: "Cambria Math", "Latin Modern Math", "{body_font}", serif;
+      font-family: "Cambria Math", "Latin Modern Math", "STIX Two Math", "DejaVu Math TeX Gyre", "{body_font}", serif;
       font-size: 1.18em;
       display: flex;
       justify-content: center;

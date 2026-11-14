@@ -94,14 +94,22 @@ pub struct MarkdownToPdfApp {
 
 impl MarkdownToPdfApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        Self::new_with_files(cc, Vec::new())
+    }
+
+    pub fn new_with_files(
+        cc: &eframe::CreationContext<'_>,
+        initial_files: Vec<PathBuf>,
+    ) -> Self {
         let mut fonts = FontSystem::new();
 
-        if let Some(font_bytes) = fonts.find_egui_japanese_font_bytes() {
+        if let Some((font_bytes, face_index)) = fonts.find_egui_japanese_font() {
             let mut egui_fonts = egui::FontDefinitions::default();
-            egui_fonts.font_data.insert(
-                "jp_sys_font".to_owned(),
-                egui::FontData::from_owned(font_bytes).into(),
-            );
+            let mut font_data = egui::FontData::from_owned(font_bytes);
+            font_data.index = face_index;
+            egui_fonts
+                .font_data
+                .insert("jp_sys_font".to_owned(), font_data);
             egui_fonts
                 .families
                 .entry(egui::FontFamily::Proportional)
@@ -139,7 +147,7 @@ impl MarkdownToPdfApp {
         let doc_layout = layout_document(&first_tab.parsed_doc, &theme, &mut fonts);
         let preview_zoom = user_defaults.default_preview_zoom.clamp(0.4, 2.5);
 
-        Self {
+        let mut app = Self {
             tabs: vec![first_tab],
             active_tab_idx: 0,
             next_tab_id: 2,
@@ -165,7 +173,36 @@ impl MarkdownToPdfApp {
             needs_relayout: false,
             needs_rerender_preview: true,
             status_message: "準備完了 — ファイルをドロップして複数タブで開けます".to_string(),
+        };
+
+        if !initial_files.is_empty() {
+            let mut opened_md = false;
+            let mut first_arg_md_replaced = false;
+            for path in initial_files {
+                let ext = path
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .unwrap_or("")
+                    .to_lowercase();
+                if ext == "json" || ext == "css" {
+                    app.load_theme_from_path(&path);
+                } else if let Ok(content) = std::fs::read_to_string(&path) {
+                    if !first_arg_md_replaced {
+                        app.tabs.clear();
+                        app.next_tab_id = 1;
+                        first_arg_md_replaced = true;
+                    }
+                    app.open_markdown_path(path, content);
+                    opened_md = true;
+                }
+            }
+            if opened_md {
+                app.active_tab_idx = 0;
+                app.needs_relayout = true;
+            }
         }
+
+        app
     }
 
     fn active_tab(&self) -> &DocumentTab {
@@ -1165,17 +1202,42 @@ impl MarkdownToPdfApp {
                     &font_badge,
                     &mut open_font,
                     |ui| {
-                        // Quick font chips
+                        // Quick font chips (show installed Japanese fonts on the current OS)
+                        let all_chips = [
+                            ("游ゴシック", "Yu Gothic"),
+                            ("游明朝", "Yu Mincho"),
+                            ("メイリオ", "Meiryo"),
+                            ("UDPゴシック", "BIZ UDPGothic"),
+                            ("UDP明朝", "BIZ UDPMincho"),
+                            ("MSゴシック", "MS Gothic"),
+                            ("MS明朝", "MS Mincho"),
+                            ("Noto Sans CJK", "Noto Sans CJK JP"),
+                            ("Noto Serif CJK", "Noto Serif CJK JP"),
+                            ("Noto Sans JP", "Noto Sans JP"),
+                            ("Noto Serif JP", "Noto Serif JP"),
+                            ("IPAexゴシック", "IPAexGothic"),
+                            ("IPAex明朝", "IPAexMincho"),
+                            ("IPAゴシック", "IPAGothic"),
+                            ("IPA明朝", "IPAMincho"),
+                            ("Takao Pゴシック", "TakaoPGothic"),
+                            ("VL Pゴシック", "VL PGothic"),
+                        ];
+                        let installed_chips: Vec<(&str, &str)> = all_chips
+                            .iter()
+                            .copied()
+                            .filter(|(_, fam)| self.fonts.has_family(fam))
+                            .collect();
+                        let display_chips: &[(&str, &str)] = if installed_chips.is_empty() {
+                            &[
+                                ("Noto Sans CJK", "Noto Sans CJK JP"),
+                                ("Noto Serif CJK", "Noto Serif CJK JP"),
+                                ("IPAexゴシック", "IPAexGothic"),
+                            ]
+                        } else {
+                            &installed_chips
+                        };
                         ui.horizontal_wrapped(|ui| {
-                            for (label, fam) in [
-                                ("游ゴシック", "Yu Gothic"),
-                                ("游明朝", "Yu Mincho"),
-                                ("メイリオ", "Meiryo"),
-                                ("UDPゴシック", "BIZ UDPGothic"),
-                                ("UDP明朝", "BIZ UDPMincho"),
-                                ("MSゴシック", "MS Gothic"),
-                                ("MS明朝", "MS Mincho"),
-                            ] {
+                            for &(label, fam) in display_chips {
                                 let active = self.theme.body_font.eq_ignore_ascii_case(fam);
                                 if ui.selectable_label(active, label).clicked() {
                                     self.theme.body_font = fam.to_string();

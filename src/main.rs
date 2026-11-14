@@ -10,10 +10,26 @@ use app::MarkdownToPdfApp;
 
 fn main() -> eframe::Result<()> {
     let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|a| a == "--help" || a == "-h") {
+        print_help();
+        return Ok(());
+    }
+    if args.iter().any(|a| a == "--version" || a == "-V") {
+        println!("Marupo {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
     if args.len() >= 4 && args[1] == "--export" {
         run_cli_export(&args[2..]);
         return Ok(());
     }
+
+    let initial_files: Vec<std::path::PathBuf> = args
+        .iter()
+        .skip(1)
+        .filter(|a| !a.starts_with('-'))
+        .map(std::path::PathBuf::from)
+        .filter(|p| p.is_file())
+        .collect();
 
     let icon_rgba = icon::render_mrp_icon_rgba(64);
     let app_icon = std::sync::Arc::new(egui::IconData {
@@ -22,21 +38,45 @@ fn main() -> eframe::Result<()> {
         height: 64,
     });
 
+    #[allow(unused_mut)]
+    let mut viewport = egui::ViewportBuilder::default()
+        .with_title("Marupo (マルポ) — MarkdownをRustでPDFにするアプリ")
+        .with_icon(app_icon)
+        .with_inner_size([1280.0, 840.0])
+        .with_min_inner_size([900.0, 600.0])
+        .with_drag_and_drop(true);
+
+    #[cfg(target_os = "linux")]
+    {
+        viewport = viewport.with_app_id("io.github.negxkuniklo.Marupo");
+    }
+
     let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_title("Marupo (マルポ) — MarkdownをRustでPDFにするアプリ")
-            .with_icon(app_icon)
-            .with_inner_size([1280.0, 840.0])
-            .with_min_inner_size([900.0, 600.0])
-            .with_drag_and_drop(true),
+        viewport,
         ..Default::default()
     };
 
     eframe::run_native(
         "Marupo",
         native_options,
-        Box::new(|cc| Ok(Box::new(MarkdownToPdfApp::new(cc)))),
+        Box::new(move |cc| Ok(Box::new(MarkdownToPdfApp::new_with_files(cc, initial_files)))),
     )
+}
+
+fn print_help() {
+    println!(
+        "Marupo {} — Pure Rust Markdown to PDF / HTML converter
+
+USAGE:
+  Marupo [FILES...]
+  Marupo --export <INPUT.md> <OUTPUT.pdf|OUTPUT.html> [--theme <THEME.json|STYLE.css>]
+
+OPTIONS:
+  -h, --help       Show this help message
+  -V, --version    Show version information
+  --export         Convert Markdown directly to PDF or HTML in CLI mode",
+        env!("CARGO_PKG_VERSION")
+    );
 }
 
 fn run_cli_export(args: &[String]) {

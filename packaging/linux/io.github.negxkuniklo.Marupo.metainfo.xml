@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.negxkuniklo.Marupo</id>
+  <name>Marupo</name>
+  <summary>Pure Rust Markdown to PDF and HTML converter</summary>
+  <summary xml:lang="ja">純Rust製 Markdown to PDF / HTML 変換アプリ</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <description>
+    <p>
+      Marupo is a standalone desktop application written in pure Rust that parses Markdown,
+      typesets pages with system fonts, renders a live page-sheet preview, and exports
+      vector PDFs and self-contained HTML without relying on WebView, Chromium, or LaTeX.
+    </p>
+    <p xml:lang="ja">
+      Marupo（マルポ）は、WebViewや外部変換ツール（LaTeX・Chromium等）に依存せず、
+      100%純粋なRustコードのみでMarkdownの解析・組版・リアルタイムプレビュー・ベクターPDF/単一HTML出力を行うデスクトップアプリです。
+    </p>
+    <ul>
+      <li>100% matching live continuous page preview and vector PDF output</li>
+      <li>YAML Frontmatter, auto TOC, GitHub-style Callouts, highlights (==text==), and 2D LaTeX math</li>
+      <li>Multi-tab editing, drag-and-drop, and batch PDF export</li>
+      <li>Customizable emphasis styles, JSON/CSS theme live editing, and CLI export mode</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">io.github.negxkuniklo.Marupo.desktop</launchable>
+  <provides>
+    <binary>Marupo</binary>
+  </provides>
+
+  <url type="homepage">https://github.com/Negxkuniklo/Marupo</url>
+  <url type="bugtracker">https://github.com/Negxkuniklo/Marupo/issues</url>
+
+  <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="0.1.0" date="2026-11-14">
+      <description>
+        <p>Added Linux desktop and Flatpak support alongside Windows portable build.</p>
+      </description>
+    </release>
+  </releases>
+</component>

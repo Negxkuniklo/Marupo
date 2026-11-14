@@ -11,26 +11,39 @@ fn main() {
     println!("cargo:rerun-if-changed=src/icon.rs");
     println!("cargo:rerun-if-changed=build.rs");
 
-    let ico_bytes = icon_gen::encode_ico_bytes();
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
 
-    // Save assets/marupo_icon.ico and assets/marupo_icon.png for convenience
+    // Save assets/marupo_icon.png for desktop integration / packaging (ignore errors on read-only trees)
     let _ = fs::create_dir_all("assets");
-    let _ = fs::write("assets/marupo_icon.ico", &ico_bytes);
     if let Some(mut pixmap) = tiny_skia::Pixmap::new(256, 256) {
         let rgba = icon_gen::render_mrp_icon_rgba(256);
         pixmap.data_mut().copy_from_slice(&rgba);
         if let Ok(png) = pixmap.encode_png() {
-            let _ = fs::write("assets/marupo_icon.png", png);
+            write_if_changed("assets/marupo_icon.png", &png);
         }
     }
 
-    // Build a standard Windows .res file containing RT_ICON and RT_GROUP_ICON
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let res_path = out_dir.join("marupo_icon.res");
-    let res_bytes = build_windows_res_from_ico(&ico_bytes);
-    fs::write(&res_path, &res_bytes).expect("Failed to write marupo_icon.res");
+    if target_os == "windows" {
+        let ico_bytes = icon_gen::encode_ico_bytes();
+        write_if_changed("assets/marupo_icon.ico", &ico_bytes);
 
-    println!("cargo:rustc-link-arg-bins={}", res_path.display());
+        // Build a standard Windows .res file containing RT_ICON and RT_GROUP_ICON
+        let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+        let res_path = out_dir.join("marupo_icon.res");
+        let res_bytes = build_windows_res_from_ico(&ico_bytes);
+        fs::write(&res_path, &res_bytes).expect("Failed to write marupo_icon.res");
+
+        println!("cargo:rustc-link-arg-bins={}", res_path.display());
+    }
+}
+
+fn write_if_changed(path: &str, bytes: &[u8]) {
+    if let Ok(existing) = fs::read(path) {
+        if existing == bytes {
+            return;
+        }
+    }
+    let _ = fs::write(path, bytes);
 }
 
 fn build_windows_res_from_ico(ico: &[u8]) -> Vec<u8> {

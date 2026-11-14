@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=Marupo
+GenericName=Markdown to PDF Converter
+GenericName[ja]=Markdown PDF変換ツール
+Comment=Pure Rust Markdown to PDF and HTML converter with live preview
+Comment[ja]=Markdownを純RustでPDF・HTMLに変換するデスクトップアプリ
+Exec=Marupo %F
+Icon=io.github.negxkuniklo.Marupo
+Terminal=false
+Categories=Office;Publishing;Utility;
+MimeType=text/markdown;text/x-markdown;
+Keywords=Markdown;PDF;HTML;Converter;Document;
+StartupNotify=true
+StartupWMClass=io.github.negxkuniklo.Marupo

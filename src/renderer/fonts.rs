@@ -42,6 +42,32 @@ impl FontSystem {
         let mut db = Database::new();
         db.load_system_fonts();
 
+        #[cfg(target_os = "linux")]
+        {
+            // Inside Flatpak, host fonts are exposed under /run/host/* and app fonts under /app/share/fonts.
+            // Only load directories not already scanned via fontconfig to avoid duplicate faces.
+            let extra_dirs = [
+                "/run/host/fonts",
+                "/run/host/user-fonts",
+                "/run/host/local-fonts",
+                "/app/share/fonts",
+            ];
+            for dir_str in extra_dirs {
+                let dir_path = std::path::Path::new(dir_str);
+                if !dir_path.is_dir() {
+                    continue;
+                }
+                let already_loaded = db.faces().any(|f| match &f.source {
+                    fontdb::Source::File(p) => p.starts_with(dir_path),
+                    fontdb::Source::SharedFile(p, _) => p.starts_with(dir_path),
+                    fontdb::Source::Binary(_) => false,
+                });
+                if !already_loaded {
+                    db.load_fonts_dir(dir_path);
+                }
+            }
+        }
+
         let mut family_set = BTreeSet::new();
         for face in db.faces() {
             for (name, _) in &face.families {
@@ -61,8 +87,9 @@ impl FontSystem {
             fallback_chain: Vec::new(),
         };
 
-        // Preload reliable fallback chain (Japanese + Latin + Math/Symbols)
+        // Preload reliable fallback chain (Japanese + Latin + Monospace + Math/Symbols across Windows & Linux)
         let fallbacks = [
+            // Windows Japanese & UI/Math
             "Yu Gothic",
             "游ゴシック",
             "Meiryo",
@@ -73,10 +100,73 @@ impl FontSystem {
             "Segoe UI Symbol",
             "Cambria Math",
             "Arial",
+            // Linux / Open-source Japanese (Sans & Serif)
+            "Noto Sans CJK JP",
+            "Noto Sans JP",
+            "Noto Sans CJK",
+            "Source Han Sans JP",
+            "Source Han Sans",
+            "IPAexGothic",
+            "IPAGothic",
+            "IPAPGothic",
+            "TakaoPGothic",
+            "TakaoGothic",
+            "VL PGothic",
+            "VL Gothic",
+            "IBM Plex Sans JP",
+            "M+ 1p",
+            "M PLUS 1p",
+            "Droid Sans Japanese",
+            "Droid Sans Fallback",
+            "Noto Serif CJK JP",
+            "Noto Serif JP",
+            "IPAexMincho",
+            "IPAMincho",
+            // Linux Latin, Monospace & Math/Symbols
+            "Noto Sans",
+            "DejaVu Sans",
+            "Liberation Sans",
+            "Ubuntu",
+            "Cantarell",
+            "Noto Sans Mono",
+            "DejaVu Sans Mono",
+            "Liberation Mono",
+            "Noto Sans Symbols",
+            "Noto Sans Symbols 2",
+            "DejaVu Math TeX Gyre",
+            "STIX Two Math",
+            "Latin Modern Math",
+            "OpenSymbol",
         ];
 
         for fb in fallbacks {
             if let Some(id) = sys.load_family(fb) {
+                if !sys.fallback_chain.contains(&id) {
+                    sys.fallback_chain.push(id);
+                }
+            }
+        }
+
+        // Last-resort scan: ensure at least one Japanese-capable font is in fallback_chain
+        let has_jp = sys
+            .fallback_chain
+            .iter()
+            .any(|&id| sys.try_char_in_font(id, 'あ').is_some());
+        if !has_jp {
+            if let Some(id) = sys.find_and_load_face_with_char('あ') {
+                if !sys.fallback_chain.contains(&id) {
+                    sys.fallback_chain.push(id);
+                }
+            }
+        }
+
+        // Ensure at least one math-capable font is in fallback_chain
+        let has_math = sys
+            .fallback_chain
+            .iter()
+            .any(|&id| sys.try_char_in_font(id, '∑').is_some());
+        if !has_math {
+            if let Some(id) = sys.find_and_load_face_with_char('∑') {
                 if !sys.fallback_chain.contains(&id) {
                     sys.fallback_chain.push(id);
                 }
@@ -90,22 +180,96 @@ impl FontSystem {
         &self.families
     }
 
-    /// Finds raw font bytes suitable for egui GUI Japanese rendering
-    pub fn find_egui_japanese_font_bytes(&mut self) -> Option<Vec<u8>> {
+    pub fn has_family(&self, requested: &str) -> bool {
+        let req = requested.trim();
+        self.families.iter().any(|f| f.eq_ignore_ascii_case(req))
+    }
+
+    fn find_and_load_face_with_char(&mut self, target_ch: char) -> Option<LoadedFontId> {
+        let candidate_ids: Vec<(DbFaceId, u32, String)> = self
+            .db
+            .faces()
+            .filter(|f| f.style == fontdb::Style::Normal)
+            .filter_map(|f| {
+                let fam = f.families.first()?.0.clone();
+                if fam.starts_with('@') || fam.trim().is_empty() {
+                    return None;
+                }
+                Some((f.id, f.index, fam))
+            })
+            .collect();
+
+        for (face_id, face_index, fam) in candidate_ids {
+            let mut bytes_opt: Option<Vec<u8>> = None;
+            self.db.with_face_data(face_id, |data, _| {
+                if let Ok(face) = Face::parse(data, face_index) {
+                    if face.glyph_index(target_ch).is_some_and(|g| g.0 != 0) {
+                        bytes_opt = Some(data.to_vec());
+                    }
+                }
+            });
+            if let Some(bytes) = bytes_opt {
+                let key = fam.trim().to_lowercase();
+                if let Some(&existing) = self.family_to_loaded.get(&key) {
+                    return Some(existing);
+                }
+                let id = LoadedFontId(self.loaded_fonts.len());
+                self.loaded_fonts.push(LoadedFont {
+                    family_name: fam,
+                    data: Arc::new(bytes),
+                    face_index,
+                });
+                self.family_to_loaded.insert(key, id);
+                return Some(id);
+            }
+        }
+        None
+    }
+
+    /// Finds raw font bytes and TTC face index suitable for egui GUI Japanese rendering
+    pub fn find_egui_japanese_font(&mut self) -> Option<(Vec<u8>, u32)> {
         let candidates = [
+            // Windows
             "Yu Gothic UI",
             "Meiryo",
             "BIZ UDPGothic",
             "Yu Gothic",
             "MS UI Gothic",
             "MS Gothic",
+            // Linux / Open-source
+            "Noto Sans CJK JP",
+            "Noto Sans JP",
+            "Noto Sans CJK",
+            "Source Han Sans JP",
+            "Source Han Sans",
+            "IPAexGothic",
+            "IPAGothic",
+            "IPAPGothic",
+            "TakaoPGothic",
+            "TakaoGothic",
+            "VL PGothic",
+            "VL Gothic",
+            "IBM Plex Sans JP",
+            "M+ 1p",
+            "M PLUS 1p",
+            "Droid Sans Japanese",
+            "Droid Sans Fallback",
         ];
         for cand in candidates {
             if let Some(id) = self.load_family(cand) {
                 let font = &self.loaded_fonts[id.0];
-                if ab_glyph::FontRef::try_from_slice(&font.data).is_ok() {
-                    return Some((*font.data).clone());
+                if ab_glyph::FontRef::try_from_slice_and_index(&font.data, font.face_index).is_ok()
+                {
+                    if self.try_char_in_font(id, 'あ').is_some() {
+                        return Some(((*font.data).clone(), font.face_index));
+                    }
                 }
+            }
+        }
+        if let Some(id) = self.find_and_load_face_with_char('あ') {
+            let font = &self.loaded_fonts[id.0];
+            if ab_glyph::FontRef::try_from_slice_and_index(&font.data, font.face_index).is_ok() {
+                return Some(((*font.data).clone(), font.face_index));
             }
         }
         None
@@ -120,7 +284,7 @@ impl FontSystem {
         let aliases = family_aliases(requested);
         let mut matched_face_id: Option<DbFaceId> = None;
 
-        // First try Normal weight + Normal style match
+        // First try exact Regular (400) weight + Normal style match
         for alias in &aliases {
             for face in self.db.faces() {
                 if face
@@ -128,7 +292,7 @@ impl FontSystem {
                     .iter()
                     .any(|(f, _)| f.eq_ignore_ascii_case(alias))
                     && face.style == fontdb::Style::Normal
-                    && (face.weight.0 >= 350 && face.weight.0 <= 550)
+                    && face.weight == fontdb::Weight::NORMAL
                 {
                     matched_face_id = Some(face.id);
                     break;
@@ -136,6 +300,27 @@ impl FontSystem {
             }
             if matched_face_id.is_some() {
                 break;
+            }
+        }
+
+        // Next try Normal weight range (350..=550) + Normal style match
+        if matched_face_id.is_none() {
+            for alias in &aliases {
+                for face in self.db.faces() {
+                    if face
+                        .families
+                        .iter()
+                        .any(|(f, _)| f.eq_ignore_ascii_case(alias))
+                        && face.style == fontdb::Style::Normal
+                        && (face.weight.0 >= 350 && face.weight.0 <= 550)
+                    {
+                        matched_face_id = Some(face.id);
+                        break;
+                    }
+                }
+                if matched_face_id.is_some() {
+                    break;
+                }
             }
         }
 
@@ -306,35 +491,115 @@ fn family_aliases(name: &str) -> Vec<String> {
     let mut out = vec![trimmed.to_string()];
     match trimmed.to_lowercase().as_str() {
         "yu gothic" | "游ゴシック" | "yugothic" => {
-            out.push("Yu Gothic".to_string());
-            out.push("游ゴシック".to_string());
-            out.push("Yu Gothic UI".to_string());
+            out.extend([
+                "Yu Gothic".to_string(),
+                "游ゴシック".to_string(),
+                "Yu Gothic UI".to_string(),
+                "Noto Sans CJK JP".to_string(),
+                "Noto Sans JP".to_string(),
+                "IPAexGothic".to_string(),
+                "IPAGothic".to_string(),
+                "TakaoPGothic".to_string(),
+                "VL PGothic".to_string(),
+                "BIZ UDPGothic".to_string(),
+            ]);
         }
         "yu mincho" | "游明朝" | "yumincho" => {
-            out.push("Yu Mincho".to_string());
-            out.push("游明朝".to_string());
+            out.extend([
+                "Yu Mincho".to_string(),
+                "游明朝".to_string(),
+                "Noto Serif CJK JP".to_string(),
+                "Noto Serif JP".to_string(),
+                "IPAexMincho".to_string(),
+                "IPAMincho".to_string(),
+                "TakaoMincho".to_string(),
+            ]);
         }
         "meiryo" | "メイリオ" => {
-            out.push("Meiryo".to_string());
-            out.push("メイリオ".to_string());
-            out.push("Meiryo UI".to_string());
+            out.extend([
+                "Meiryo".to_string(),
+                "メイリオ".to_string(),
+                "Meiryo UI".to_string(),
+                "Noto Sans CJK JP".to_string(),
+                "Noto Sans JP".to_string(),
+                "IPAexGothic".to_string(),
+                "IPAGothic".to_string(),
+                "TakaoPGothic".to_string(),
+            ]);
         }
         "ms gothic" | "ｍｓ ゴシック" | "ms ゴシック" => {
-            out.push("MS Gothic".to_string());
-            out.push("ＭＳ ゴシック".to_string());
-            out.push("MS UI Gothic".to_string());
+            out.extend([
+                "MS Gothic".to_string(),
+                "ＭＳ ゴシック".to_string(),
+                "MS UI Gothic".to_string(),
+                "Noto Sans CJK JP".to_string(),
+                "IPAGothic".to_string(),
+                "VL Gothic".to_string(),
+            ]);
         }
         "ms mincho" | "ｍｓ 明朝" | "ms 明朝" => {
-            out.push("MS Mincho".to_string());
-            out.push("ＭＳ 明朝".to_string());
+            out.extend([
+                "MS Mincho".to_string(),
+                "ＭＳ 明朝".to_string(),
+                "Noto Serif CJK JP".to_string(),
+                "IPAMincho".to_string(),
+            ]);
         }
         "biz udpgothic" | "biz udpゴシック" => {
-            out.push("BIZ UDPGothic".to_string());
-            out.push("BIZ UDPゴシック".to_string());
+            out.extend([
+                "BIZ UDPGothic".to_string(),
+                "BIZ UDPゴシック".to_string(),
+                "Noto Sans CJK JP".to_string(),
+                "Noto Sans JP".to_string(),
+                "IPAexGothic".to_string(),
+            ]);
         }
         "biz udpmincho" | "biz udp明朝" => {
-            out.push("BIZ UDPMincho".to_string());
-            out.push("BIZ UDP明朝".to_string());
+            out.extend([
+                "BIZ UDPMincho".to_string(),
+                "BIZ UDP明朝".to_string(),
+                "Noto Serif CJK JP".to_string(),
+                "Noto Serif JP".to_string(),
+                "IPAexMincho".to_string(),
+            ]);
+        }
+        "noto sans cjk jp" | "noto sans jp" | "noto sans cjk" | "source han sans jp" => {
+            out.extend([
+                "Noto Sans CJK JP".to_string(),
+                "Noto Sans JP".to_string(),
+                "Noto Sans CJK".to_string(),
+                "Source Han Sans JP".to_string(),
+                "Source Han Sans".to_string(),
+                "IPAexGothic".to_string(),
+                "IPAGothic".to_string(),
+                "TakaoPGothic".to_string(),
+                "VL PGothic".to_string(),
+                "Yu Gothic".to_string(),
+                "Meiryo".to_string(),
+            ]);
+        }
+        "noto serif cjk jp" | "noto serif jp" | "noto serif cjk" | "source han serif jp" => {
+            out.extend([
+                "Noto Serif CJK JP".to_string(),
+                "Noto Serif JP".to_string(),
+                "Noto Serif CJK".to_string(),
+                "Source Han Serif JP".to_string(),
+                "Source Han Serif".to_string(),
+                "IPAexMincho".to_string(),
+                "IPAMincho".to_string(),
+                "TakaoMincho".to_string(),
+                "Yu Mincho".to_string(),
+            ]);
+        }
+        "consolas" | "dejavu sans mono" | "noto sans mono" | "liberation mono" => {
+            out.extend([
+                "Consolas".to_string(),
+                "DejaVu Sans Mono".to_string(),
+                "Noto Sans Mono".to_string(),
+                "Liberation Mono".to_string(),
+                "Ubuntu Mono".to_string(),
+                "JetBrains Mono".to_string(),
+            ]);
         }
         _ => {}
     }

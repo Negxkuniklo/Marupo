@@ -1,0 +1,67 @@
+name: Linux & Flatpak Build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  linux-cargo-test:
+    name: Linux Cargo Test & Build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Japanese fonts for E2E test
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+
+      - name: Run cargo test
+        run: cargo test --locked --verbose
+
+      - name: Build release binary
+        run: cargo build --release --locked --verbose
+
+  flatpak-build:
+    name: Flatpak Bundle
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-24.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install rust-stable SDK extension
+        run: |
+          flatpak remote-add --system --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --system --noninteractive flathub org.freedesktop.Sdk.Extension.rust-stable//24.08
+
+      - name: Build Flatpak bundle
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: Marupo.flatpak
+          manifest-path: packaging/flatpak/io.github.negxkuniklo.Marupo.yml
+          repository-url: https://dl.flathub.org/repo/flathub.flatpakrepo
+          run-tests: false
+
+      - name: Upload Flatpak bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: Marupo-flatpak
+          path: Marupo.flatpak

@@ -1,0 +1,34 @@
+id: io.github.negxkuniklo.Marupo
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: Marupo
+
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --filesystem=home
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/marupo/cargo
+
+modules:
+  - name: marupo
+    buildsystem: simple
+    build-commands:
+      - cargo --offline build --release --locked --verbose
+      - install -Dm755 target/release/Marupo /app/bin/Marupo
+      - install -Dm644 assets/marupo_icon.png /app/share/icons/hicolor/256x256/apps/io.github.negxkuniklo.Marupo.png
+      - install -Dm644 packaging/linux/io.github.negxkuniklo.Marupo.desktop /app/share/applications/io.github.negxkuniklo.Marupo.desktop
+      - install -Dm644 packaging/linux/io.github.negxkuniklo.Marupo.metainfo.xml /app/share/metainfo/io.github.negxkuniklo.Marupo.metainfo.xml
+      - install -Dm644 LICENSE.txt /app/share/licenses/io.github.negxkuniklo.Marupo/LICENSE.txt
+    sources:
+      - type: dir
+        path: ../..
+      - cargo-sources.json
