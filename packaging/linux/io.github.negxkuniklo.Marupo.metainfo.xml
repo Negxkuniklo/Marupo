@@ -20,7 +20,7 @@
     <ul>
       <li>100% matching live continuous page preview and vector PDF output</li>
       <li>YAML Frontmatter, auto TOC, GitHub-style Callouts, highlights (==text==), and 2D LaTeX math</li>
-      <li>Multi-tab editing, drag-and-drop, and batch PDF export</li>
+      <li>Multi-tab editing and drag-and-drop support</li>
       <li>Customizable emphasis styles, JSON/CSS theme live editing, and CLI export mode</li>
     </ul>
   </description>

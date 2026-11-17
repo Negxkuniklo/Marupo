@@ -17,7 +17,7 @@ impl MetadataDisplayMode {
     pub fn label(&self) -> &'static str {
         match self {
             Self::Hidden => "非表示 (PDFに出力しない)",
-            Self::HeaderCard => "ドキュメントヘッダー形式 (タイトル＋属性バッジ)",
+            Self::HeaderCard => "ドキュメントヘッダー形式 (カード内に全項目を表示)",
             Self::PropertyTable => "プロパティテーブル形式 (全項目を表形式で表示)",
         }
     }
@@ -98,6 +98,7 @@ pub struct HeadingStyle {
     pub underline: bool,
     pub underline_color: [u8; 3],
     pub left_accent_bar: bool,
+    pub page_break_before: bool,
 }
 
 impl Default for HeadingStyle {
@@ -109,6 +110,7 @@ impl Default for HeadingStyle {
             underline: false,
             underline_color: [209, 213, 219],
             left_accent_bar: false,
+            page_break_before: false,
         }
     }
 }
@@ -266,6 +268,7 @@ impl ThemeConfig {
                 underline: true,
                 underline_color: [59, 130, 246],
                 left_accent_bar: false,
+                page_break_before: false,
             },
             h2_style: HeadingStyle {
                 color: [30, 41, 59],
@@ -274,6 +277,7 @@ impl ThemeConfig {
                 underline: true,
                 underline_color: [203, 213, 225],
                 left_accent_bar: true,
+                page_break_before: false,
             },
             h3_style: HeadingStyle {
                 color: [51, 65, 85],
@@ -282,6 +286,7 @@ impl ThemeConfig {
                 underline: false,
                 underline_color: [226, 232, 240],
                 left_accent_bar: false,
+                page_break_before: false,
             },
             h4_style: HeadingStyle {
                 color: [71, 85, 105],
@@ -290,6 +295,7 @@ impl ThemeConfig {
                 underline: false,
                 underline_color: [226, 232, 240],
                 left_accent_bar: false,
+                page_break_before: false,
             },
 
             code_block_bg: [248, 250, 252],

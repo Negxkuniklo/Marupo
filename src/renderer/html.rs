@@ -141,6 +141,9 @@ fn generate_preview_matching_css(
                 hex(h.color)
             );
         }
+        if h.page_break_before {
+            rules.push_str(" page-break-before: always; break-before: page;");
+        }
         rules
     };
 
@@ -214,22 +217,13 @@ fn generate_preview_matching_css(
       background-color: {code_bg};
       border: 1px solid {code_border};
       border-top: 4px solid {h1_ul};
-      padding: 14pt;
+      padding: 12pt;
       margin-bottom: {fm_bot:.1}pt;
-    }}
-    .fm-card-title {{
-      font-family: "{heading_font}", sans-serif;
-      font-size: 1.85em;
-      font-weight: 700;
-      color: {h1_color};
-      margin: 0 0 8pt 0;
     }}
     .fm-card-grid {{
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 4pt 14pt;
-      border-top: 1px solid {code_border};
-      padding-top: 8pt;
       font-size: 0.92em;
       color: {quote_text};
     }}
@@ -530,7 +524,6 @@ fn generate_preview_matching_css(
         h2_css = heading_css(&theme.h2_style, false),
         h3_css = heading_css(&theme.h3_style, false),
         h4_css = heading_css(&theme.h4_style, false),
-        h1_color = hex(theme.h1_style.color),
         h1_ul = hex(theme.h1_style.underline_color),
         h2_color = hex(theme.h2_style.color),
         bold_css = emp_css(&theme.bold_style),
@@ -558,30 +551,20 @@ fn render_frontmatter_html(
     match mode {
         MetadataDisplayMode::Hidden => {}
         MetadataDisplayMode::HeaderCard => {
-            let title = fm.get("title").unwrap_or("Untitled Document");
-            let _ = writeln!(out, r#"    <header class="fm-card">"#);
-            let _ = writeln!(
-                out,
-                r#"      <div class="fm-card-title">{}</div>"#,
-                escape_html(title)
-            );
-            let others: Vec<&(String, String)> = fm
-                .properties
-                .iter()
-                .filter(|(k, _)| !k.eq_ignore_ascii_case("title"))
-                .collect();
-            if !others.is_empty() {
-                let _ = writeln!(out, r#"      <div class="fm-card-grid">"#);
-                for (k, v) in others {
-                    let _ = writeln!(
-                        out,
-                        r#"        <div><strong>{}:</strong> {}</div>"#,
-                        escape_html(k),
-                        escape_html(v)
-                    );
-                }
-                let _ = writeln!(out, r#"      </div>"#);
+            if fm.properties.is_empty() {
+                return;
             }
+            let _ = writeln!(out, r#"    <header class="fm-card">"#);
+            let _ = writeln!(out, r#"      <div class="fm-card-grid">"#);
+            for (k, v) in &fm.properties {
+                let _ = writeln!(
+                    out,
+                    r#"        <div><strong>{}:</strong> {}</div>"#,
+                    escape_html(k),
+                    escape_html(v)
+                );
+            }
+            let _ = writeln!(out, r#"      </div>"#);
             let _ = writeln!(out, r#"    </header>"#);
         }
         MetadataDisplayMode::PropertyTable => {

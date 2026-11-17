@@ -364,46 +364,56 @@ impl<'a> LayoutContext<'a> {
         match self.theme.metadata_mode {
             MetadataDisplayMode::Hidden => {}
             MetadataDisplayMode::HeaderCard => {
-                let title = fm.get("title").unwrap_or("Untitled Document");
-                let mut meta_items: Vec<(&str, &str)> = Vec::new();
-                for (k, v) in &fm.properties {
-                    if !k.eq_ignore_ascii_case("title") {
-                        meta_items.push((k.as_str(), v.as_str()));
-                    }
+                if fm.properties.is_empty() {
+                    return;
                 }
 
-                let pad = 14.0;
-                let title_spans = vec![InlineSpan::Text {
-                    text: title.to_string(),
-                    flags: InlineFlags::default(),
-                }];
-                let title_base = ResolvedCharStyle {
-                    font_id: self.rf.heading,
-                    size_pt: self.theme.base_font_size * 1.85,
-                    color: self.theme.h1_style.color,
-                    stroke_boost: 0.75,
+                let pad = 12.0;
+                let col_w = (self.content_w - pad * 2.0) * 0.5;
+                let meta_line_h = self.theme.base_font_size * 1.45;
+                let base_style = ResolvedCharStyle {
+                    font_id: self.rf.body,
+                    size_pt: self.theme.base_font_size * 0.92,
+                    color: self.theme.quote_text_color,
+                    stroke_boost: 0.0,
                     slant: 0.0,
                     bg_color: None,
                     underline: false,
                     strikethrough: false,
                     link_url: None,
                 };
-                let title_lines =
-                    self.wrap_spans(&title_spans, &title_base, self.content_w - pad * 2.0);
-                let title_h: f32 = title_lines
-                    .iter()
-                    .map(|l| (l.ascent + l.descent) * 1.25)
-                    .sum();
 
-                let meta_line_h = self.theme.base_font_size * 1.5;
-                let meta_rows = (meta_items.len() + 1) / 2;
-                let card_h = pad * 2.0
-                    + title_h
-                    + if meta_rows > 0 {
-                        8.0 + meta_rows as f32 * meta_line_h
-                    } else {
-                        0.0
-                    };
+                let wrapped_items: Vec<Vec<WrappedLine>> = fm
+                    .properties
+                    .iter()
+                    .map(|(k, v)| {
+                        let spans = vec![
+                            InlineSpan::Text {
+                                text: format!("{}: ", k),
+                                flags: InlineFlags {
+                                    bold: true,
+                                    ..Default::default()
+                                },
+                            },
+                            InlineSpan::Text {
+                                text: v.clone(),
+                                flags: InlineFlags::default(),
+                            },
+                        ];
+                        self.wrap_spans(&spans, &base_style, col_w - 8.0)
+                    })
+                    .collect();
+
+                let row_heights: Vec<f32> = wrapped_items
+                    .chunks(2)
+                    .map(|chunk| {
+                        let max_lines = chunk.iter().map(|lines| lines.len().max(1)).max().unwrap_or(1);
+                        max_lines as f32 * meta_line_h
+                    })
+                    .collect();
+
+                let rows_h: f32 = row_heights.iter().sum();
+                let card_h = pad * 2.0 + rows_h;
 
                 self.ensure_space(card_h + 12.0);
                 let card_y = self.cursor_y;
@@ -427,60 +437,17 @@ impl<'a> LayoutContext<'a> {
                 });
 
                 self.cursor_y += pad;
-                for line in &title_lines {
-                    self.draw_wrapped_line(line, self.margin_left + pad, ColumnAlign::Left, 0.0);
-                    self.cursor_y += (line.ascent + line.descent) * 1.25;
-                }
-
-                if !meta_items.is_empty() {
-                    self.cursor_y += 4.0;
-                    self.push_prim(LayoutPrimitive::Line {
-                        x1: self.margin_left + pad,
-                        y1: self.cursor_y,
-                        x2: self.margin_left + self.content_w - pad,
-                        y2: self.cursor_y,
-                        color: self.theme.code_block_border,
-                        width: 0.6,
-                    });
-                    self.cursor_y += 6.0;
-
-                    let col_w = (self.content_w - pad * 2.0) * 0.5;
-                    for chunk in meta_items.chunks(2) {
-                        let row_y = self.cursor_y;
-                        for (idx, (k, v)) in chunk.iter().enumerate() {
-                            let col_x = self.margin_left + pad + idx as f32 * col_w;
-                            let spans = vec![
-                                InlineSpan::Text {
-                                    text: format!("{}: ", k),
-                                    flags: InlineFlags {
-                                        bold: true,
-                                        ..Default::default()
-                                    },
-                                },
-                                InlineSpan::Text {
-                                    text: (*v).to_string(),
-                                    flags: InlineFlags::default(),
-                                },
-                            ];
-                            let base_style = ResolvedCharStyle {
-                                font_id: self.rf.body,
-                                size_pt: self.theme.base_font_size * 0.92,
-                                color: self.theme.quote_text_color,
-                                stroke_boost: 0.0,
-                                slant: 0.0,
-                                bg_color: None,
-                                underline: false,
-                                strikethrough: false,
-                                link_url: None,
-                            };
-                            let lines = self.wrap_spans(&spans, &base_style, col_w - 8.0);
-                            if let Some(first_line) = lines.first() {
-                                self.cursor_y = row_y;
-                                self.draw_wrapped_line(first_line, col_x, ColumnAlign::Left, 0.0);
-                            }
+                for (chunk, &row_h) in wrapped_items.chunks(2).zip(row_heights.iter()) {
+                    let row_y = self.cursor_y;
+                    for (idx, lines) in chunk.iter().enumerate() {
+                        let col_x = self.margin_left + pad + idx as f32 * col_w;
+                        self.cursor_y = row_y;
+                        for line in lines {
+                            self.draw_wrapped_line(line, col_x, ColumnAlign::Left, 0.0);
+                            self.cursor_y += meta_line_h;
                         }
-                        self.cursor_y = row_y + meta_line_h;
                     }
+                    self.cursor_y = row_y + row_h;
                 }
 
                 self.cursor_y = card_y + card_h + self.theme.paragraph_spacing * 1.5;
@@ -778,6 +745,10 @@ impl<'a> LayoutContext<'a> {
                     3 => &self.theme.h3_style,
                     _ => &self.theme.h4_style,
                 };
+                if depth == 0 && h_style.page_break_before && self.cursor_y > self.margin_top + 2.0
+                {
+                    self.new_page();
+                }
                 let size_pt = self.theme.base_font_size * h_style.size_scale;
                 let top_space = match level {
                     1 => self.theme.paragraph_spacing * 1.6,

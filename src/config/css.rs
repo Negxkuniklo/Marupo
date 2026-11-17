@@ -54,6 +54,7 @@ h2 {{
   font-size: {h2_scale:.2}em;
   border-bottom: {h2_border};
   border-left: {h2_left};
+  page-break-before: {h2_break};
 }}
 
 h3 {{
@@ -140,6 +141,11 @@ th {{
             format!("4px solid {}", hex(theme.h2_style.color))
         } else {
             "none".to_string()
+        },
+        h2_break = if theme.h2_style.page_break_before {
+            "always"
+        } else {
+            "auto"
         },
         h3_color = hex(theme.h3_style.color),
         h3_scale = theme.h3_style.size_scale,
@@ -386,6 +392,12 @@ fn apply_declaration(sel: &str, prop: &str, val: &str, theme: &mut ThemeConfig) 
                 }
                 "border-left" => {
                     style.left_accent_bar = !val.trim().eq_ignore_ascii_case("none");
+                    true
+                }
+                "page-break-before" | "break-before" => {
+                    let v = val.trim().to_ascii_lowercase();
+                    style.page_break_before =
+                        matches!(v.as_str(), "always" | "page" | "left" | "right" | "recto" | "verso");
                     true
                 }
                 _ => false,

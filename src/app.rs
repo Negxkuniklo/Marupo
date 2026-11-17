@@ -448,31 +448,6 @@ impl MarkdownToPdfApp {
         }
     }
 
-    fn export_all_tabs_pdf_dialog(&mut self) {
-        if let Some(folder) = rfd::FileDialog::new().pick_folder() {
-            let mut exported_count = 0usize;
-            for tab in &self.tabs {
-                let layout = layout_document(&tab.parsed_doc, &self.theme, &mut self.fonts);
-                let pdf_bytes = export_pdf_bytes(&layout, &self.fonts);
-                let stem = tab
-                    .path
-                    .as_ref()
-                    .and_then(|p| p.file_stem())
-                    .and_then(|s| s.to_str())
-                    .unwrap_or_else(|| tab.title.strip_suffix(".md").unwrap_or(&tab.title));
-                let out_path = folder.join(format!("{}.pdf", stem));
-                if std::fs::write(&out_path, &pdf_bytes).is_ok() {
-                    exported_count += 1;
-                }
-            }
-            self.status_message = format!(
-                "全 {} タブを一括PDF出力しました: {}",
-                exported_count,
-                folder.display()
-            );
-        }
-    }
-
     fn import_theme_file_dialog(&mut self) {
         if let Some(path) = rfd::FileDialog::new()
             .add_filter("Theme (JSON / CSS)", &["json", "css"])
@@ -778,16 +753,6 @@ impl eframe::App for MarkdownToPdfApp {
                             .clicked()
                         {
                             self.export_html_dialog();
-                        }
-
-                        if self.tabs.len() > 1 {
-                            if ui
-                                .button("📚 一括PDF")
-                                .on_hover_text("開いている全タブを指定フォルダへ一括でPDF出力します")
-                                .clicked()
-                            {
-                                self.export_all_tabs_pdf_dialog();
-                            }
                         }
 
                         let mode_icon = if self.ui_dark_mode { "🌙" } else { "☀" };
@@ -1185,6 +1150,20 @@ impl MarkdownToPdfApp {
                                 )
                                 .changed();
                         });
+
+                        ui.separator();
+
+                        ui.horizontal_wrapped(|ui| {
+                            changed |= ui
+                                .checkbox(
+                                    &mut self.theme.h2_style.page_break_before,
+                                    "見出し2で改ページする",
+                                )
+                                .on_hover_text(
+                                    "ONにすると、見出し2 (## H2) の直前で新しいページに切り替えます",
+                                )
+                                .changed();
+                        });
                     },
                 );
                 self.sec_open_meta = open_meta;
@@ -1398,8 +1377,14 @@ impl MarkdownToPdfApp {
 
                 // Card 4: Headings
                 let h_badge = format!(
-                    "H1 {:.1}x · H2 {:.1}x",
-                    self.theme.h1_style.size_scale, self.theme.h2_style.size_scale
+                    "H1 {:.1}x · H2 {:.1}x{}",
+                    self.theme.h1_style.size_scale,
+                    self.theme.h2_style.size_scale,
+                    if self.theme.h2_style.page_break_before {
+                        " · H2改ページ"
+                    } else {
+                        ""
+                    }
                 );
                 let mut open_heading = self.sec_open_heading;
                 inspector_card(
@@ -1409,6 +1394,18 @@ impl MarkdownToPdfApp {
                     &h_badge,
                     &mut open_heading,
                     |ui| {
+                        ui.horizontal_wrapped(|ui| {
+                            changed |= ui
+                                .checkbox(
+                                    &mut self.theme.h2_style.page_break_before,
+                                    "見出し2で改ページする",
+                                )
+                                .on_hover_text(
+                                    "ONにすると、見出し2 (## H2) の直前で新しいページに切り替えます",
+                                )
+                                .changed();
+                        });
+                        ui.add_space(4.0);
                         changed |=
                             modern_heading_row(ui, dark, "h1_ed", "H1 大見出し", &mut self.theme.h1_style);
                         ui.add_space(4.0);
@@ -2283,6 +2280,15 @@ fn modern_heading_row(
                         .clicked()
                     {
                         style.left_accent_bar = !style.left_accent_bar;
+                        changed = true;
+                    }
+                    ui.add_space(4.0);
+                    if ui
+                        .selectable_label(style.page_break_before, "改ページ")
+                        .on_hover_text("この見出しの直前で改ページします")
+                        .clicked()
+                    {
+                        style.page_break_before = !style.page_break_before;
                         changed = true;
                     }
                 });
