@@ -198,6 +198,7 @@ fn generate_preview_matching_css(
     }}
     strong, b {{ {bold_css} }}
     em, i {{ {italic_css} }}
+    strong em, em strong, b i, i b {{ {bold_italic_css} }}
     mark {{ {highlight_css} }}
     del, s {{ text-decoration: line-through; }}
     code.inline-code {{
@@ -533,6 +534,7 @@ fn generate_preview_matching_css(
         h2_color = hex(theme.h2_style.color),
         bold_css = emp_css(&theme.bold_style),
         italic_css = emp_css(&theme.italic_style),
+        bold_italic_css = emp_css(&theme.bold_italic_style),
         highlight_css = emp_css(&theme.highlight_style),
         code_css = emp_css(&theme.inline_code_style),
         code_bg = hex(theme.code_block_bg),

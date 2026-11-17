@@ -21,8 +21,17 @@
   "margin_left_mm": 20.0,
   "margin_right_mm": 20.0,
   "show_page_numbers": true,
-  "bold_style": {
+  "bold_italic_style": {
     "color": [220, 38, 38],
+    "size_scale": 1.0,
+    "stroke_boost": 0.65,
+    "slant": 0.2,
+    "use_background": false,
+    "background_color": [254, 226, 226],
+    "underline": false
+  },
+  "bold_style": {
+    "color": [217, 119, 6],
     "size_scale": 1.0,
     "stroke_boost": 0.65,
     "slant": 0.0,
@@ -31,7 +40,7 @@
     "underline": false
   },
   "italic_style": {
-    "color": [234, 179, 8],
+    "color": [37, 99, 235],
     "size_scale": 1.0,
     "stroke_boost": 0.0,
     "slant": 0.2,
@@ -49,7 +58,7 @@
     "underline": false
   },
   "inline_code_style": {
-    "color": [190, 24, 93],
+    "color": [21, 128, 61],
     "size_scale": 0.92,
     "stroke_boost": 0.1,
     "slant": 0.0,
@@ -90,7 +99,7 @@
     "left_accent_bar": false
   },
   "code_block_bg": [248, 250, 252],
-  "code_block_text": [30, 41, 59],
+  "code_block_text": [21, 128, 61],
   "code_block_border": [226, 232, 240],
   "quote_bar_color": [100, 116, 139],
   "quote_bg_color": [248, 250, 252],

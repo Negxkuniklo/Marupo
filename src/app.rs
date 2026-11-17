@@ -1335,19 +1335,19 @@ impl MarkdownToPdfApp {
                         changed |= modern_emphasis_card(
                             ui,
                             dark,
-                            "bold_emp",
-                            "太字 (**Bold**)",
-                            &mut self.theme.bold_style,
+                            "bold_italic_emp",
+                            "太字斜体 (***BoldItalic***)",
+                            &mut self.theme.bold_italic_style,
                             true,
-                            false,
+                            true,
                         );
                         ui.add_space(4.0);
                         changed |= modern_emphasis_card(
                             ui,
                             dark,
-                            "highlight_emp",
-                            "マーカー (==Mark==)",
-                            &mut self.theme.highlight_style,
+                            "bold_emp",
+                            "太字 (**Bold**)",
+                            &mut self.theme.bold_style,
                             true,
                             false,
                         );
@@ -1365,12 +1365,26 @@ impl MarkdownToPdfApp {
                         changed |= modern_emphasis_card(
                             ui,
                             dark,
+                            "highlight_emp",
+                            "マーカー (==Mark==)",
+                            &mut self.theme.highlight_style,
+                            true,
+                            false,
+                        );
+                        ui.add_space(4.0);
+                        let code_changed = modern_emphasis_card(
+                            ui,
+                            dark,
                             "code_emp",
-                            "コード (`code`)",
+                            "コード (`code` / ```)",
                             &mut self.theme.inline_code_style,
                             false,
                             false,
                         );
+                        if code_changed {
+                            self.theme.code_block_text = self.theme.inline_code_style.color;
+                            changed = true;
+                        }
                     },
                 );
                 self.sec_open_emp = open_emp;
@@ -2317,6 +2331,7 @@ status: Production Ready
 
 ## 2. 強調・装飾と拡張記法のデモ
 
+- ***太字・斜体強調 (`***BoldItalic***`)***: 赤色・太字・斜体による強い強調表現
 - **太字強調 (`**Bold**`)**: 色やサイズ倍率（1.0x〜1.8x）、下線の有無を自由に変更可能
 - *斜体強調 (`*Italic*`)*: 任意のフォントに対して美しい斜体シア変換と配色を適用
 - ==ハイライト (`==Highlight==`)==: 蛍光ペン風の背景マーカーと文字色をカスタマイズ可能

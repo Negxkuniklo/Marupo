@@ -151,6 +151,7 @@ pub struct ThemeConfig {
     pub show_page_numbers: bool,
 
     // Emphasis Customization
+    pub bold_italic_style: EmphasisStyle,
     pub bold_style: EmphasisStyle,
     pub italic_style: EmphasisStyle,
     pub highlight_style: EmphasisStyle,
@@ -224,8 +225,17 @@ impl ThemeConfig {
             margin_right_mm: 20.0,
             show_page_numbers: true,
 
-            bold_style: EmphasisStyle {
+            bold_italic_style: EmphasisStyle {
                 color: [220, 38, 38],
+                size_scale: 1.0,
+                stroke_boost: 0.65,
+                slant: 0.20,
+                use_background: false,
+                background_color: [254, 226, 226],
+                underline: false,
+            },
+            bold_style: EmphasisStyle {
+                color: [217, 119, 6],
                 size_scale: 1.0,
                 stroke_boost: 0.65,
                 slant: 0.0,
@@ -234,7 +244,7 @@ impl ThemeConfig {
                 underline: false,
             },
             italic_style: EmphasisStyle {
-                color: [234, 179, 8],
+                color: [37, 99, 235],
                 size_scale: 1.0,
                 stroke_boost: 0.0,
                 slant: 0.20,
@@ -252,7 +262,7 @@ impl ThemeConfig {
                 underline: false,
             },
             inline_code_style: EmphasisStyle {
-                color: [190, 24, 93],
+                color: [21, 128, 61],
                 size_scale: 0.92,
                 stroke_boost: 0.1,
                 slant: 0.0,
@@ -299,7 +309,7 @@ impl ThemeConfig {
             },
 
             code_block_bg: [248, 250, 252],
-            code_block_text: [30, 41, 59],
+            code_block_text: [21, 128, 61],
             code_block_border: [226, 232, 240],
             quote_bar_color: [100, 116, 139],
             quote_bg_color: [248, 250, 252],

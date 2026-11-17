@@ -74,6 +74,11 @@ em, i {{
   font-size: {italic_scale:.2}em;
 }}
 
+strong em, em strong {{
+  color: {bi_color};
+  font-size: {bi_scale:.2}em;
+}}
+
 mark {{
   color: {mark_color};
   background-color: {mark_bg};
@@ -163,6 +168,8 @@ th {{
         },
         italic_color = hex(theme.italic_style.color),
         italic_scale = theme.italic_style.size_scale,
+        bi_color = hex(theme.bold_italic_style.color),
+        bi_scale = theme.bold_italic_style.size_scale,
         mark_color = hex(theme.highlight_style.color),
         mark_bg = hex(theme.highlight_style.background_color),
         mark_scale = theme.highlight_style.size_scale,
@@ -402,6 +409,9 @@ fn apply_declaration(sel: &str, prop: &str, val: &str, theme: &mut ThemeConfig) 
                 }
                 _ => false,
             }
+        }
+        "strong em" | "em strong" | "b i" | "i b" => {
+            apply_emphasis_css(prop, val, theme.base_font_size, &mut theme.bold_italic_style)
         }
         "strong" | "b" => apply_emphasis_css(prop, val, theme.base_font_size, &mut theme.bold_style),
         "em" | "i" => apply_emphasis_css(prop, val, theme.base_font_size, &mut theme.italic_style),

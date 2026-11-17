@@ -36,6 +36,11 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="0.2.0" date="2026-11-17">
+      <description>
+        <p>Improved YAML frontmatter header card layout, added H2 page break option, and updated default emphasis and code styles.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-11-14">
       <description>
         <p>Added Linux desktop and Flatpak support alongside Windows portable build.</p>

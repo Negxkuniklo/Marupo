@@ -1545,10 +1545,11 @@ impl<'a> LayoutContext<'a> {
         s.strikethrough = flags.strikethrough;
         s.link_url = flags.link_url.clone();
 
-        if flags.italic {
+        if flags.bold && flags.italic {
+            apply_emp(&mut s, &self.theme.bold_italic_style);
+        } else if flags.italic {
             apply_emp(&mut s, &self.theme.italic_style);
-        }
-        if flags.bold {
+        } else if flags.bold {
             apply_emp(&mut s, &self.theme.bold_style);
         }
         if flags.highlight {
