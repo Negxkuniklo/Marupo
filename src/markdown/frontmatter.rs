@@ -14,6 +14,23 @@ impl FrontmatterData {
             .find(|(k, _)| k.eq_ignore_ascii_case(key_insensitive))
             .map(|(_, v)| v.as_str())
     }
+
+    /// Returns true if this metadata property should occupy a full row (1 column) in HeaderCard mode
+    /// (e.g. `title` or multi-value fields like `tags`).
+    pub fn is_full_width_property(key: &str, val: &str) -> bool {
+        let k = key.trim();
+        k.eq_ignore_ascii_case("title")
+            || k.eq_ignore_ascii_case("subtitle")
+            || k.eq_ignore_ascii_case("description")
+            || k.eq_ignore_ascii_case("summary")
+            || k.eq_ignore_ascii_case("tags")
+            || k.eq_ignore_ascii_case("tag")
+            || k.eq_ignore_ascii_case("categories")
+            || k.eq_ignore_ascii_case("category")
+            || k.eq_ignore_ascii_case("keywords")
+            || k.eq_ignore_ascii_case("aliases")
+            || val.contains(", ")
+    }
 }
 
 /// Extracts YAML frontmatter if the markdown starts with `---` on the first line.

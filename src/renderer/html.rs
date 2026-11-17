@@ -224,9 +224,13 @@ fn generate_preview_matching_css(
     .fm-card-grid {{
       display: grid;
       grid-template-columns: repeat(2, 1fr);
+      grid-auto-flow: row dense;
       gap: 4pt 14pt;
       font-size: 0.92em;
       color: {quote_text};
+    }}
+    .fm-card-full {{
+      grid-column: 1 / -1;
     }}
     /* Frontmatter Property Table */
     .fm-prop-heading {{
@@ -558,12 +562,21 @@ fn render_frontmatter_html(
             let _ = writeln!(out, r#"    <header class="fm-card">"#);
             let _ = writeln!(out, r#"      <div class="fm-card-grid">"#);
             for (k, v) in &fm.properties {
-                let _ = writeln!(
-                    out,
-                    r#"        <div><strong>{}:</strong> {}</div>"#,
-                    escape_html(k),
-                    escape_html(v)
-                );
+                if FrontmatterData::is_full_width_property(k, v) {
+                    let _ = writeln!(
+                        out,
+                        r#"        <div class="fm-card-full"><strong>{}:</strong> {}</div>"#,
+                        escape_html(k),
+                        escape_html(v)
+                    );
+                } else {
+                    let _ = writeln!(
+                        out,
+                        r#"        <div><strong>{}:</strong> {}</div>"#,
+                        escape_html(k),
+                        escape_html(v)
+                    );
+                }
             }
             let _ = writeln!(out, r#"      </div>"#);
             let _ = writeln!(out, r#"    </header>"#);

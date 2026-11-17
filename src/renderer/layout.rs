@@ -383,8 +383,14 @@ impl<'a> LayoutContext<'a> {
                     return;
                 }
 
+                enum CardRow {
+                    Full(usize),
+                    TwoCol(usize, Option<usize>),
+                }
+
                 let pad = 12.0;
-                let col_w = (self.content_w - pad * 2.0) * 0.5;
+                let inner_w = self.content_w - pad * 2.0;
+                let col_w = inner_w * 0.5;
                 let meta_line_h = self.theme.base_font_size * 1.45;
                 let base_style = ResolvedCharStyle {
                     font_id: self.rf.body,
@@ -398,36 +404,72 @@ impl<'a> LayoutContext<'a> {
                     link_url: None,
                 };
 
-                let wrapped_items: Vec<Vec<WrappedLine>> = fm
-                    .properties
+                let mut rows: Vec<CardRow> = Vec::new();
+                let mut open_two_col_idx: Option<usize> = None;
+                for (i, (k, v)) in fm.properties.iter().enumerate() {
+                    if FrontmatterData::is_full_width_property(k, v) {
+                        rows.push(CardRow::Full(i));
+                    } else if let Some(r_idx) = open_two_col_idx.take() {
+                        if let CardRow::TwoCol(_, ref mut second) = rows[r_idx] {
+                            *second = Some(i);
+                        }
+                    } else {
+                        let r_idx = rows.len();
+                        rows.push(CardRow::TwoCol(i, None));
+                        open_two_col_idx = Some(r_idx);
+                    }
+                }
+
+                let wrap_prop = |idx: usize, max_w: f32| -> Vec<WrappedLine> {
+                    let (k, v) = &fm.properties[idx];
+                    let spans = vec![
+                        InlineSpan::Text {
+                            text: format!("{}: ", k),
+                            flags: InlineFlags {
+                                bold: true,
+                                ..Default::default()
+                            },
+                        },
+                        InlineSpan::Text {
+                            text: v.clone(),
+                            flags: InlineFlags::default(),
+                        },
+                    ];
+                    self.wrap_spans(&spans, &base_style, max_w)
+                };
+
+                enum WrappedCardRow {
+                    Full(Vec<WrappedLine>, f32),
+                    TwoCol(Vec<WrappedLine>, Option<Vec<WrappedLine>>, f32),
+                }
+
+                let wrapped_rows: Vec<WrappedCardRow> = rows
+                    .into_iter()
+                    .map(|row| match row {
+                        CardRow::Full(i) => {
+                            let lines = wrap_prop(i, inner_w);
+                            let h = lines.len().max(1) as f32 * meta_line_h;
+                            WrappedCardRow::Full(lines, h)
+                        }
+                        CardRow::TwoCol(a, b) => {
+                            let lines_a = wrap_prop(a, col_w - 8.0);
+                            let lines_b = b.map(|idx| wrap_prop(idx, col_w - 8.0));
+                            let max_lines = lines_a
+                                .len()
+                                .max(lines_b.as_ref().map_or(0, |l| l.len()))
+                                .max(1);
+                            let h = max_lines as f32 * meta_line_h;
+                            WrappedCardRow::TwoCol(lines_a, lines_b, h)
+                        }
+                    })
+                    .collect();
+
+                let rows_h: f32 = wrapped_rows
                     .iter()
-                    .map(|(k, v)| {
-                        let spans = vec![
-                            InlineSpan::Text {
-                                text: format!("{}: ", k),
-                                flags: InlineFlags {
-                                    bold: true,
-                                    ..Default::default()
-                                },
-                            },
-                            InlineSpan::Text {
-                                text: v.clone(),
-                                flags: InlineFlags::default(),
-                            },
-                        ];
-                        self.wrap_spans(&spans, &base_style, col_w - 8.0)
+                    .map(|r| match r {
+                        WrappedCardRow::Full(_, h) | WrappedCardRow::TwoCol(_, _, h) => *h,
                     })
-                    .collect();
-
-                let row_heights: Vec<f32> = wrapped_items
-                    .chunks(2)
-                    .map(|chunk| {
-                        let max_lines = chunk.iter().map(|lines| lines.len().max(1)).max().unwrap_or(1);
-                        max_lines as f32 * meta_line_h
-                    })
-                    .collect();
-
-                let rows_h: f32 = row_heights.iter().sum();
+                    .sum();
                 let card_h = pad * 2.0 + rows_h;
 
                 self.ensure_space(card_h + 12.0);
@@ -452,17 +494,46 @@ impl<'a> LayoutContext<'a> {
                 });
 
                 self.cursor_y += pad;
-                for (chunk, &row_h) in wrapped_items.chunks(2).zip(row_heights.iter()) {
+                for row in &wrapped_rows {
                     let row_y = self.cursor_y;
-                    for (idx, lines) in chunk.iter().enumerate() {
-                        let col_x = self.margin_left + pad + idx as f32 * col_w;
-                        self.cursor_y = row_y;
-                        for line in lines {
-                            self.draw_wrapped_line(line, col_x, ColumnAlign::Left, 0.0);
-                            self.cursor_y += meta_line_h;
+                    match row {
+                        WrappedCardRow::Full(lines, row_h) => {
+                            for line in lines {
+                                self.draw_wrapped_line(
+                                    line,
+                                    self.margin_left + pad,
+                                    ColumnAlign::Left,
+                                    0.0,
+                                );
+                                self.cursor_y += meta_line_h;
+                            }
+                            self.cursor_y = row_y + row_h;
+                        }
+                        WrappedCardRow::TwoCol(lines_a, lines_b, row_h) => {
+                            for line in lines_a {
+                                self.draw_wrapped_line(
+                                    line,
+                                    self.margin_left + pad,
+                                    ColumnAlign::Left,
+                                    0.0,
+                                );
+                                self.cursor_y += meta_line_h;
+                            }
+                            if let Some(lines_b) = lines_b {
+                                self.cursor_y = row_y;
+                                for line in lines_b {
+                                    self.draw_wrapped_line(
+                                        line,
+                                        self.margin_left + pad + col_w,
+                                        ColumnAlign::Left,
+                                        0.0,
+                                    );
+                                    self.cursor_y += meta_line_h;
+                                }
+                            }
+                            self.cursor_y = row_y + row_h;
                         }
                     }
-                    self.cursor_y = row_y + row_h;
                 }
 
                 self.cursor_y = card_y + card_h + self.theme.paragraph_spacing * 1.5;
