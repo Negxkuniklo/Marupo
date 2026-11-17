@@ -188,6 +188,7 @@ fn generate_preview_matching_css(
     }}
     h1 {{ {h1_css} }}
     h2 {{ {h2_css} }}
+    h1 + h2, h2 + h3, h3 + h4 {{ page-break-before: avoid; break-before: avoid; }}
     h3 {{ {h3_css} }}
     h4 {{ {h4_css} }}
     p {{

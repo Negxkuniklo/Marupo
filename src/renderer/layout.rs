@@ -139,6 +139,8 @@ fn run_layout_pass(
         headings: Vec::new(),
         known_headings,
         heading_counter: 0,
+        prev_top_heading_level: None,
+        has_body_content: false,
     };
 
     // 1. Render Frontmatter if present & enabled
@@ -158,6 +160,17 @@ fn run_layout_pass(
     // 3. Render document body blocks
     for block in &doc.blocks {
         ctx.layout_block(block, ctx.margin_left, ctx.content_w, 0);
+        match block {
+            DocBlock::Heading { level, .. } => {
+                ctx.prev_top_heading_level = Some(*level);
+                ctx.has_body_content = true;
+            }
+            DocBlock::TocPlaceholder => {}
+            _ => {
+                ctx.prev_top_heading_level = None;
+                ctx.has_body_content = true;
+            }
+        }
     }
 
     // 4. Render footnotes at the end if any exist
@@ -192,6 +205,8 @@ struct LayoutContext<'a> {
     headings: Vec<HeadingEntry>,
     known_headings: &'a [HeadingEntry],
     heading_counter: usize,
+    prev_top_heading_level: Option<u8>,
+    has_body_content: bool,
 }
 
 #[derive(Clone)]
@@ -745,7 +760,14 @@ impl<'a> LayoutContext<'a> {
                     3 => &self.theme.h3_style,
                     _ => &self.theme.h4_style,
                 };
-                if depth == 0 && h_style.page_break_before && self.cursor_y > self.margin_top + 2.0
+                let after_parent_heading = self
+                    .prev_top_heading_level
+                    .is_some_and(|prev_lvl| prev_lvl < *level);
+                if depth == 0
+                    && h_style.page_break_before
+                    && self.has_body_content
+                    && !after_parent_heading
+                    && self.cursor_y > self.margin_top + 2.0
                 {
                     self.new_page();
                 }
