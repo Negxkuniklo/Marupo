@@ -1,6 +1,6 @@
 ---
 title: RustMark PDF — 純Rust製ドキュメント変換エンジン
-author: Antigravity & User
+author: Name
 date: 2026-10-29
 version: 1.0.0
 tags: [Rust, Markdown, PDF, DesktopApp]

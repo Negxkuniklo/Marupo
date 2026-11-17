@@ -225,7 +225,7 @@ impl ThemeConfig {
             show_page_numbers: true,
 
             bold_style: EmphasisStyle {
-                color: [15, 23, 42],
+                color: [220, 38, 38],
                 size_scale: 1.0,
                 stroke_boost: 0.65,
                 slant: 0.0,
@@ -234,7 +234,7 @@ impl ThemeConfig {
                 underline: false,
             },
             italic_style: EmphasisStyle {
-                color: [51, 65, 85],
+                color: [234, 179, 8],
                 size_scale: 1.0,
                 stroke_boost: 0.0,
                 slant: 0.20,
